@@ -11,7 +11,6 @@ import (
 	"io"
 	"errors"
 	"fmt"
-	"github.com/astaxie/beego"
 )
 
 // ssh session
@@ -150,7 +149,6 @@ func (exec *HostSession) Transfer(id int, localFilePath  string, remoteFilePath 
 		return result
 	}
 	if n != fileSize {
-		beego.Info(err)
 		result.Error = errors.New(fmt.Sprintf("copy: expected %v bytes, got %d", fileSize, n))
 		return result
 	}
