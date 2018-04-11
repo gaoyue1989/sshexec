@@ -6,7 +6,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"log"
 	"os"
-	"github.com/ivpusic/grpool"
+	"github.com/linclin/grpool"
 	"errors"
 )
 
