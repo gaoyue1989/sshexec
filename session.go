@@ -2,15 +2,15 @@ package sshexec
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
+	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
-	"golang.org/x/crypto/ssh"
-	"github.com/pkg/sftp"
-	"io"
-	"errors"
-	"fmt"
 )
 
 // ssh session
@@ -40,29 +40,27 @@ type ExecResult struct {
 
 // execute the command and return a result structure
 
-func (exec *HostSession) Exec(id int, command string, config ssh.ClientConfig) (*ExecResult) {
+func (exec *HostSession) Exec(id int, command string, config ssh.ClientConfig) *ExecResult {
 
 	result := &ExecResult{
-		Id:        id,
-		Host:      exec.Hostname,
-		Command:   command,
+		Id:      id,
+		Host:    exec.Hostname,
+		Command: command,
 	}
 
-	client, err := ssh.Dial("tcp", exec.Hostname + ":" + strconv.Itoa(exec.Port), &config)
-
+	client, err := ssh.Dial("tcp", exec.Hostname+":"+strconv.Itoa(exec.Port), &config)
+	defer client.Close()
 	if err != nil {
 		result.Error = err
 		return result
 	}
 
 	session, err := client.NewSession()
-
+	defer session.Close()
 	if err != nil {
 		result.Error = err
 		return result
 	}
-
-	defer session.Close()
 
 	var b bytes.Buffer
 
@@ -82,34 +80,32 @@ func (exec *HostSession) Exec(id int, command string, config ssh.ClientConfig) (
 	return result
 }
 
-
 // execute the command and return a result structure
 
-func (exec *HostSession) Transfer(id int, localFilePath  string, remoteFilePath string, config ssh.ClientConfig) (*ExecResult) {
+func (exec *HostSession) Transfer(id int, localFilePath string, remoteFilePath string, config ssh.ClientConfig) *ExecResult {
 
 	result := &ExecResult{
-		Id:        id,
-		Host:      exec.Hostname,
-		LocalFilePath:   localFilePath,
-		RemoteFilePath:   remoteFilePath,
+		Id:             id,
+		Host:           exec.Hostname,
+		LocalFilePath:  localFilePath,
+		RemoteFilePath: remoteFilePath,
 	}
 	start := time.Now()
 	result.StartTime = start
-	client, err := ssh.Dial("tcp", exec.Hostname + ":" + strconv.Itoa(exec.Port), &config)
-
+	client, err := ssh.Dial("tcp", exec.Hostname+":"+strconv.Itoa(exec.Port), &config)
+	defer client.Close()
 	if err != nil {
 		result.Error = err
 		return result
 	}
 
 	session, err := client.NewSession()
-
+	defer session.Close()
 	if err != nil {
 		result.Error = err
 		return result
 	}
 
-	defer session.Close()
 	var fileSize int64
 	if s, err := os.Stat(localFilePath); err != nil {
 		result.Error = err
@@ -127,13 +123,13 @@ func (exec *HostSession) Transfer(id int, localFilePath  string, remoteFilePath 
 	defer srcFile.Close()
 
 	sftpClient, err := sftp.NewClient(client)
+	defer sftpClient.Close()
 	// 这里换成实际的 SSH 连接的 用户名，密码，主机名或IP，SSH端口
 	// create sftp client
 	if err != nil {
 		result.Error = err
 		return result
 	}
-	defer sftpClient.Close()
 
 	dstFile, err := sftpClient.Create(remoteFilePath)
 	if err != nil {
